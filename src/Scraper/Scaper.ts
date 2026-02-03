@@ -3,17 +3,20 @@ import {
   ClassInfo 
 } from "./Interface";
 /**
- * The scraper that scrapes the timetable site
+ * Scrapes timetable site to get info about certain classes
  *
  * @param {number} year - The year for which the information is to be scraped
- * @returns {Promise<{ timetableData: TimetableData; warnings: Warning[] }} The data that has been scraped, grouped into one of 6 terms. If the scraper is unable to classify courses, then it will group them under 'Other'
- * @returns {false}: Scraping failed due to some error. Error printed to console.error
+ * @param {string} courseCode - the code for the course eg COMP1511
+ * @param {string} term - the term which the class is intended to take place
+ * @param {string[]} classIds = the ids of classes to be scraped
+ * @returns {Promise{ listOfClasses: ClassInfo[]; lastUpdated: number; }} 
+ * @returns {false}
  * @example
  * 1.
- *    const data = await timetableScraper(2020)
- *    console.log(data.timetableData.T1) // Expect list of T1 courses in 2020
+ *    const data = await scrapeCourse(2025, "COMP1511", "T1", ["9301", "9313"])
+ *    console.log(data) // Expect class info for class with id 9301 and/or 9313 given their status is open
  * 2.
- *    const data = await timetableScraper(40100)
+ *    const data = await scrapeCourse(500, "COMP1511", "T1", ["9301", "9313"])
  *    console.log(data) // false
  */
 const scrapeCourse = async (
@@ -28,19 +31,13 @@ const scrapeCourse = async (
     }
   | false
 > => {
-  // Launch the browser. Headless mode = true by default
 
-  const courseCodeMap = {
-    'SUMMER': 'X1',
-    'T1': 'S1',
-    'T2': 'S2',
-    'T3': 'S3'
-  }
+ 
   let hrefCode = null;
-  if (courseCode === 'SUMMER') {
+  if (term === 'SUMMER') {
     hrefCode = 'X1';
-  } else if (courseCode.match(/T[123]{1}/)) {
-    hrefCode = "S" + courseCode[1];
+  } else if (term.match(/T[123]{1}/)) {
+    hrefCode = "S" + term[1];
   } else {
     return false;
   }
@@ -76,7 +73,7 @@ const scrapeCourse = async (
         const status = children[4].querySelector("green");
 
         if (!status) {
-          console.log("Class full")
+          console.log("Class full");
           return null;
         }
 
@@ -98,10 +95,6 @@ const scrapeCourse = async (
         listOfClasses.push(classContent);
       }
     }
-    
-    // TODO: call scrape page function
-
-    // TODO: filter and return list of available classes
 
     // Close the browser.
     return {

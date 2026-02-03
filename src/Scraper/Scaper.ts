@@ -1,4 +1,7 @@
 import puppeteer from "puppeteer";
+import {
+  ClassInfo 
+} from "./Interface";
 /**
  * The scraper that scrapes the timetable site
  *
@@ -16,16 +19,32 @@ import puppeteer from "puppeteer";
 const scrapeCourse = async (
   year: number,
   courseCode: string,
-  term: string
+  term: string,
+  classIds: string[]
 ): Promise<
   | {
-      timetableData: TimetableData;
-      courseWarnings: CourseWarning[];
+      listOfClasses?: ClassInfo[];
       lastUpdated: number;
     }
   | false
 > => {
   // Launch the browser. Headless mode = true by default
+
+  const courseCodeMap = {
+    'SUMMER': 'X1',
+    'T1': 'S1',
+    'T2': 'S2',
+    'T3': 'S3'
+  }
+  let hrefCode = null;
+  if (courseCode === 'SUMMER') {
+    hrefCode = 'X1';
+  } else if (courseCode.match(/T[123]{1}/)) {
+    hrefCode = "S" + courseCode[1];
+  } else {
+    return false;
+  }
+
   const browser = await puppeteer.launch({
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-gpu"],
@@ -42,6 +61,44 @@ const scrapeCourse = async (
       waitUntil: "networkidle2",
     });
 
+    const listOfClasses: ClassInfo[] = [];
+
+    for (const classId in classIds) {
+      const classContent = await page.evaluate(() => {
+        const dataChild = document.querySelector(`a[href="#${hrefCode}-${classId}"]`);
+        const tableParent = dataChild?.parentElement?.parentElement;
+        const children = tableParent?.children;
+
+        if (!children) {
+          console.log("table children not found")
+          return null;
+        }
+        const status = children[4].querySelector("green");
+
+        if (!status) {
+          console.log("Class full")
+          return null;
+        }
+
+        const activityElem = children[0].querySelector(`#${hrefCode}-${classId}`);
+        let activity;
+        if (activityElem) {
+          activity = activityElem.textContent;
+        } else return null;
+        const date = children[6].textContent;
+
+        return {
+          classID: classId,
+          isOpen: true,
+          date: date,
+          activity: activity
+        }
+      });
+      if (classContent) {
+        listOfClasses.push(classContent);
+      }
+    }
+    
     // TODO: call scrape page function
 
     // TODO: filter and return list of available classes
@@ -59,3 +116,4 @@ const scrapeCourse = async (
     await browser.close();
   }
 };
+

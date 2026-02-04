@@ -48,36 +48,46 @@ const scrapeCourse = async (
   });
   try {
     const page = await browser.newPage();
+
+    page.on("console", msg => {
+      console.log("PAGE:", msg.text());
+    });
     // Base url to be used for all scraping
     const base = `http://timetable.unsw.edu.au/${year}/`;
 
     // TODO: handle error checking for course code(using regex)
 
     // Go to the page with list of subjects (Accounting, Computers etc)
+    console.log(base + courseCode + ".html")
     await page.goto(base + courseCode + ".html", {
       waitUntil: "networkidle2",
     });
 
     const listOfClasses: ClassInfo[] = [];
-
-    for (const classId in classIds) {
-      const classContent = await page.evaluate(() => {
+    for (const classId of classIds) {
+      const classContent = await page.evaluate((hrefCode, classId) => {
+        console.log(`a[href="#${hrefCode}-${classId}"]`);
         const dataChild = document.querySelector(`a[href="#${hrefCode}-${classId}"]`);
-        const tableParent = dataChild?.parentElement?.parentElement;
-        const children = tableParent?.children;
+        if (!dataChild) console.log("data not found");
 
+        const tableParent = dataChild?.parentElement?.parentElement;
+        if (!tableParent) console.log("parent not found");
+
+        const children = tableParent?.children;
         if (!children) {
-          console.log("table children not found")
+          console.log("table children not found");
           return null;
         }
-        const status = children[4].querySelector("green");
+
+        const status = children[4].querySelector('font[color="green"]')?.textContent;
+        console.log(`Here is status: ${status}`);
 
         if (!status) {
           console.log("Class full");
           return null;
         }
 
-        const activityElem = children[0].querySelector(`#${hrefCode}-${classId}`);
+        const activityElem = children[0].querySelector(`a[href="#${hrefCode}-${classId}"]`);
         let activity;
         if (activityElem) {
           activity = activityElem.textContent;
@@ -90,7 +100,10 @@ const scrapeCourse = async (
           date: date,
           activity: activity
         }
-      });
+      },
+      hrefCode,
+      classId
+    );
       if (classContent) {
         listOfClasses.push(classContent);
       }
@@ -110,3 +123,6 @@ const scrapeCourse = async (
   }
 };
 
+export {
+  scrapeCourse
+}

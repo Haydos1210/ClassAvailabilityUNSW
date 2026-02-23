@@ -28,7 +28,7 @@ import {
  *    const data = await scrapeCourse(500, "COMP1511", "T1", ["9301", "9313"])
  *    console.log(data) // false
  */
-const scrapeCourses = async (
+export const scrapeCourses = async (
   year: number,
   term: string,
   targetCourses: TargetCourses[]
@@ -162,12 +162,11 @@ const scrapeClasses = async(
  * @param {number} batchsize - Number of pages to be created
  * @returns {Promise<Page[]>}
  */
-const createPages = async ({ browser, batchsize }: createPagesParams): Promise<Page[]> => {
+export const createPages = async ({ browser, batchsize }: createPagesParams): Promise<Page[]> => {
   // List of pages
   const pages: Page[] = [];
   for (let pageno = 0; pageno < batchsize; pageno++) {
     const singlepage = await browser.newPage();
-    // Block all js, css, fonts and images for speed
     await singlepage.setRequestInterception(true);
     singlepage.on("request", (request) => {
       const type = request.resourceType();
@@ -182,10 +181,3 @@ const createPages = async ({ browser, batchsize }: createPagesParams): Promise<P
   return pages;
 };
 
-export { createPages };
-
-
-
-export {
-  scrapeCourses
-}
